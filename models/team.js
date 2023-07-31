@@ -10,8 +10,13 @@ const teamSchema = new mongoose.Schema({
     required: true,
   },
   players: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Player',
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Player'
+    },
+    firstName: {
+      type: String
+    },
   }],
   budget: {
     type: Number,

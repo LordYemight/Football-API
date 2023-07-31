@@ -24,8 +24,13 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   team: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Team',
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team'
+    },
+    name: {
+      type: String
+    },
   },
   marketValue: {
     type: Number,

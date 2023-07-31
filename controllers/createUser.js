@@ -2,8 +2,10 @@ const User = require('../models/user');
 const Team = require('../models/team');
 const bcrypt = require('bcrypt');
 const Player = require('../models/player');
-const { faker } = require('@faker-js/faker');
+const Chance = require('chance');
 const createUserSchema = require('../validators/createUserVal');
+
+const chance = new Chance();
 
 const createUser = async (req, res, next) => {
   try {
@@ -35,20 +37,57 @@ const createUser = async (req, res, next) => {
 
     await user.save();
 
-    function getRandomInt(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
+    const getRandomAge = () => {
+      for (let i = 18; i <= 35; i++) {
+        const agess = ((Math.random() * 1)) * i
+        const age = Math.floor(agess)
+        if (agess > 18 && agess < 35) {
+          return age
+        }  
+      }
     }
-    
-    // Function to generate a random player with age between 18 and 40
+
+// Fisher-Yates (also known as Knuth) shuffle algorithm
+const shuffleArray = (array) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+};
+
+const positions = (goalkeeper, defender, midfielder, attacker) => {
+  const players = [];
+
+  // Adding all players to the array
+  for (let i = 0; i < 3; i++) {
+    players.push(goalkeeper);
+  }
+  for (let i = 0; i < 6; i++) {
+    players.push(defender);
+  }
+  for (let i = 0; i < 6; i++) {
+    players.push(midfielder);
+  }
+  for (let i = 0; i < 5; i++) {
+    players.push(attacker);
+  }
+
+  shuffleArray(players); // Shuffle the array randomly
+
+    return players; // Return and remove the last player from the array
+  
+};
+const getRandomPosition = positions("Goalkeeper", "Defender", "Midfielder", "Attacker")
+const playerPosition = getRandomPosition;
+
+  
+    // Function to generate a random player with age between 18 and 30
     function generateRandomPlayer() {
-      const firstName = faker.person.firstName();
-      const lastName = faker.person.lastName();
-      const country = faker.location.country();
-      const minAge = 18;
-      const maxAge = 40;
-      const ageOffset = getRandomInt(0, maxAge - minAge);
-      const age = minAge + ageOffset;
-      const position = faker.helpers.randomize(['goalkeeper', 'defender', 'midfielder', 'attacker']);
+      const firstName = chance.first({ gender: "male" });
+      const lastName = chance.last();
+      const country = chance.country({ full: true });
+      const age = getRandomAge();
+      const position = chance.pickone(playerPosition);
       const marketValue = 1000000;
     
       return {
@@ -60,44 +99,27 @@ const createUser = async (req, res, next) => {
         marketValue,
       };
     }
-    
-    // Function to generate 20 random players
-    function generateRandomPlayers() {
-      const players = [];
-    
-      // Generate 3 goalkeepers
-      for (let i = 0; i < 3; i++) {
-        players.push(generateRandomPlayer());
-      }
-    
-      // Generate 6 defenders
-      for (let i = 0; i < 6; i++) {
-        players.push(generateRandomPlayer());
-      }
-    
-      // Generate 6 midfielders
-      for (let i = 0; i < 6; i++) {
-        players.push(generateRandomPlayer());
-      }
-    
-      // Generate 5 attackers
-      for (let i = 0; i < 5; i++) {
-        players.push(generateRandomPlayer());
-      }
-    
-      return players;
-    }
-    
-    const initialPlayers = generateRandomPlayers();
-    const newPlayers = initialPlayers.map(player => ({ ...player, owner: user._id }));
-    await Player.insertMany(newPlayers);
 
+    // Function to generate 20 random players
+    async function generateRandomPlayers() {
+      const players = [];
+
+      for (let i = 0; i < 20; i++) {
+        const playerData = generateRandomPlayer();
+        playerData.position = playerPosition[i % playerPosition.length];
+        const player = new Player(playerData);
+        await player.save();
+        players.push(player._id);
+      }
+      return players;
+    } 
+ 
+    const playerDetails = await generateRandomPlayers();
     const newTeam = new Team({
       name: `${username} FC`,
-      country: faker.address.country(),
-      players: newPlayers.map(player => player._id),
+      country: chance.country({ full: true }),
+      players: playerDetails,
     });
-
     // Save the team to the database
     const savedTeam = await newTeam.save();
 
@@ -105,7 +127,7 @@ const createUser = async (req, res, next) => {
     user.team = savedTeam._id;
     await user.save();
 
-    res.status(201).json({ message: 'User and initial players created successfully', user, players: newPlayers, team: savedTeam });
+    res.status(201).json({ message: 'User and initial players created successfully', user, team: savedTeam });
   } catch (error) {
     next(error);
   }
